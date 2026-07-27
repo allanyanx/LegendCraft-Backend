@@ -2,6 +2,7 @@ using LegendCraft_Backend.DTOs;
 using LegendCraft_Backend.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace LegendCraft_Backend.Controllers
 {
@@ -43,6 +44,24 @@ namespace LegendCraft_Backend.Controllers
             }
 
             return Ok(response);
+        }
+
+        [HttpGet("me")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
+        public IActionResult GetProfile()
+        {
+            var email = User.FindFirstValue(System.Security.Claims.ClaimTypes.Email);
+            var firstName = User.FindFirstValue(System.Security.Claims.ClaimTypes.GivenName);
+            var lastName = User.FindFirstValue(System.Security.Claims.ClaimTypes.Surname);
+
+            var profile = new UserProfileDto
+            {
+                Email = email ?? "",
+                FirstName = firstName ?? "",
+                LastName = lastName ?? ""
+            };
+
+            return Ok(profile);
         }
 
         [HttpPost("make-admin/{email}")]

@@ -23,11 +23,15 @@ namespace LegendCraft_Backend.Controllers
         {
             try
             {
-                // Si el usuario está autenticado, obtenemos su ID
                 string? userId = null;
                 if (User.Identity?.IsAuthenticated == true)
                 {
                     userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+                    
+                    // Autorellenar datos del usuario si no vienen en el DTO
+                    createDto.GuestEmail ??= User.FindFirstValue(ClaimTypes.Email);
+                    createDto.GuestFirstName ??= User.FindFirstValue(ClaimTypes.GivenName);
+                    createDto.GuestLastName ??= User.FindFirstValue(ClaimTypes.Surname);
                 }
 
                 var result = await _orderService.CreateOrderAsync(createDto, userId);
