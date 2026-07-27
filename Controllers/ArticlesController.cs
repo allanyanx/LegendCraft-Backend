@@ -11,6 +11,11 @@ namespace LegendCraft_Backend.Controllers
     {
         private readonly IArticleService _articleService;
 
+        public ArticlesController(IArticleService articleService)
+        {
+            _articleService = articleService;
+        }
+
         [HttpPost]
         public async Task<IActionResult> CreateArticle([FromBody] ArticleCreateDto dto)
         {

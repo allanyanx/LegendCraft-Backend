@@ -1,6 +1,7 @@
 ﻿using LegendCraft_Backend.Data;
 using LegendCraft_Backend.DTOs;
 using LegendCraft_Backend.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace LegendCraft_Backend.Services
 {

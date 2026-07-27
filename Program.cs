@@ -3,18 +3,58 @@ using LegendCraft_Backend.Data;
 using LegendCraft_Backend.Services;
 using Microsoft.Extensions.FileProviders;
 using System.IO;
-
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using LegendCraft_Backend.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configuración de Base de Datos
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 
+// CONFIGURACIÓN DE IDENTITY
+// Esto conecta las clases de usuario de Microsoft con tu base de datos PostgreSQL
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddDefaultTokenProviders();
+
+// CONFIGURACIÓN DE JWT
+// Leemos la clave secreta desde el appsettings.json (o secrets.json)
+var jwtKey = builder.Configuration["Jwt:Key"];
+var jwtIssuer = builder.Configuration["Jwt:Issuer"];
+var jwtAudience = builder.Configuration["Jwt:Audience"];
+
+builder.Services.AddAuthentication(options =>
+{
+    // Le decimos a .NET que usaremos JWT por defecto para autenticar
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    // Configuramos cómo .NET debe validar los tokens entrantes
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = jwtIssuer,
+        ValidAudience = jwtAudience,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey!))
+    };
+});
+
+// Inyección de dependencias de tus servicios
 builder.Services.AddScoped<IArticleService, ArticleService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 builder.Services.AddControllers();
+
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
@@ -28,6 +68,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// ACTIVAR LA AUTENTICACIÓN
+// Es vital que UseAuthentication esté ANTES de UseAuthorization
+app.UseAuthentication();
 app.UseAuthorization();
 
 // Definimos la ruta física en el servidor/contenedor
@@ -41,10 +84,8 @@ if (!Directory.Exists(uploadsPath))
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(uploadsPath),
-    RequestPath = "/imagenes" // Así se verá en la URL (ej. miservidor.com/imagenes/foto1.jpg)
+    RequestPath = "/imagenes"
 });
 
-
 app.MapControllers();
-
 app.Run();
