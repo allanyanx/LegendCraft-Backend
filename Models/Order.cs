@@ -17,6 +17,8 @@ namespace LegendCraft_Backend.Models
         public decimal TotalAmount { get; set; }
         public OrderStatus Status { get; set; } = OrderStatus.Pending;
         public string ShippingAddress { get; set; } = string.Empty;
+        public string ContactPhone { get; set; } = string.Empty;
+        public string PaymentMethod { get; set; } = string.Empty;
 
         // Rastreo para usuarios invitados
         public Guid TrackingNumber { get; set; } = Guid.NewGuid();

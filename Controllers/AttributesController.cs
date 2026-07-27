@@ -1,6 +1,7 @@
-﻿using LegendCraft_Backend.DTOs;
+using LegendCraft_Backend.DTOs;
 using LegendCraft_Backend.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace LegendCraft_Backend.Controllers
 {
@@ -26,6 +27,7 @@ namespace LegendCraft_Backend.Controllers
         // --- ENDPOINTS PARA TIPOS (Ej: Marca) ---
 
         [HttpPost("types")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateType([FromBody] AttributeTypeCreateDto dto)
         {
             var newId = await _attributeService.CreateTypeAsync(dto);
@@ -33,6 +35,7 @@ namespace LegendCraft_Backend.Controllers
         }
 
         [HttpPut("types/{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateType(int id, [FromBody] AttributeTypeCreateDto dto)
         {
             await _attributeService.UpdateTypeAsync(id, dto);
@@ -40,6 +43,7 @@ namespace LegendCraft_Backend.Controllers
         }
 
         [HttpDelete("types/{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteType(int id)
         {
             await _attributeService.DeleteTypeAsync(id);
@@ -49,6 +53,7 @@ namespace LegendCraft_Backend.Controllers
         // --- ENDPOINTS PARA VALORES (Ej: Logitech, Corsair) ---
 
         [HttpPost("types/{typeId}/values")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateValue(int typeId, [FromBody] AttributeValueCreateDto dto)
         {
             var newId = await _attributeService.CreateValueAsync(typeId, dto);
@@ -56,6 +61,7 @@ namespace LegendCraft_Backend.Controllers
         }
 
         [HttpPut("values/{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateValue(int id, [FromBody] AttributeValueCreateDto dto)
         {
             await _attributeService.UpdateValueAsync(id, dto);
@@ -63,6 +69,7 @@ namespace LegendCraft_Backend.Controllers
         }
 
         [HttpDelete("values/{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteValue(int id)
         {
             await _attributeService.DeleteValueAsync(id);

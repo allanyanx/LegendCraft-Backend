@@ -1,4 +1,4 @@
-﻿using LegendCraft_Backend.DTOs;
+using LegendCraft_Backend.DTOs;
 using Microsoft.AspNetCore.Identity;
 
 namespace LegendCraft_Backend.Services
@@ -7,5 +7,6 @@ namespace LegendCraft_Backend.Services
     {
         Task<IdentityResult> RegisterAsync(RegisterDto dto);
         Task<AuthResponseDto?> LoginAsync(LoginDto dto);
+        Task<bool> MakeAdminAsync(string email);
     }
 }

@@ -1,4 +1,4 @@
-﻿using LegendCraft_Backend.DTOs;
+using LegendCraft_Backend.DTOs;
 using LegendCraft_Backend.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -43,6 +43,18 @@ namespace LegendCraft_Backend.Controllers
             }
 
             return Ok(response);
+        }
+
+        [HttpPost("make-admin/{email}")]
+        public async Task<IActionResult> MakeAdmin(string email)
+        {
+            var success = await _authService.MakeAdminAsync(email);
+            if (!success)
+            {
+                return NotFound(new { Message = "Usuario no encontrado." });
+            }
+
+            return Ok(new { Message = $"El usuario {email} ahora tiene rol de Administrador." });
         }
     }
 }

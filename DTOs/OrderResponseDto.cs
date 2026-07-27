@@ -14,6 +14,8 @@ namespace LegendCraft_Backend.DTOs
         public decimal TotalAmount { get; set; }
         public string Status { get; set; } = string.Empty;
         public string ShippingAddress { get; set; } = string.Empty;
+        public string ContactPhone { get; set; } = string.Empty;
+        public string PaymentMethod { get; set; } = string.Empty;
         public Guid TrackingNumber { get; set; }
 
         public List<OrderItemResponseDto> Items { get; set; } = new List<OrderItemResponseDto>();

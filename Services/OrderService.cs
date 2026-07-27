@@ -23,6 +23,8 @@ namespace LegendCraft_Backend.Services
                 GuestFirstName = createDto.GuestFirstName,
                 GuestLastName = createDto.GuestLastName,
                 ShippingAddress = createDto.ShippingAddress,
+                ContactPhone = createDto.ContactPhone,
+                PaymentMethod = createDto.PaymentMethod,
                 OrderDate = DateTime.UtcNow,
                 Status = OrderStatus.Pending,
                 TrackingNumber = Guid.NewGuid()
@@ -38,13 +40,20 @@ namespace LegendCraft_Backend.Services
                     throw new Exception($"Artículo con ID {itemDto.ArticleId} no encontrado.");
                 }
 
-                if (article.Stock < itemDto.Quantity)
+                if (!article.IsPrintOnDemand && article.Stock < itemDto.Quantity)
                 {
                     throw new Exception($"Stock insuficiente para el artículo: {article.Name}");
                 }
 
-                // Descontar stock
-                article.Stock -= itemDto.Quantity;
+                // Descontar stock físico si hay disponible
+                if (article.Stock >= itemDto.Quantity)
+                {
+                    article.Stock -= itemDto.Quantity;
+                }
+                else if (article.Stock > 0)
+                {
+                    article.Stock = 0; // Se agota el físico, el resto se imprime bajo demanda
+                }
 
                 var orderItem = new OrderItem
                 {
@@ -143,6 +152,8 @@ namespace LegendCraft_Backend.Services
                 TotalAmount = order.TotalAmount,
                 Status = order.Status.ToString(),
                 ShippingAddress = order.ShippingAddress,
+                ContactPhone = order.ContactPhone,
+                PaymentMethod = order.PaymentMethod,
                 TrackingNumber = order.TrackingNumber,
                 Items = order.OrderItems.Select(oi => new OrderItemResponseDto
                 {

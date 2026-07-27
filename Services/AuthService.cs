@@ -1,4 +1,4 @@
-﻿using LegendCraft_Backend.DTOs;
+using LegendCraft_Backend.DTOs;
 using LegendCraft_Backend.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
@@ -11,11 +11,13 @@ namespace LegendCraft_Backend.Services
     public class AuthService : IAuthService
     {
         private readonly UserManager<ApplicationUser> _userManager;
+        private readonly RoleManager<IdentityRole> _roleManager;
         private readonly IConfiguration _configuration;
 
-        public AuthService(UserManager<ApplicationUser> userManager, IConfiguration configuration)
+        public AuthService(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager, IConfiguration configuration)
         {
             _userManager = userManager;
+            _roleManager = roleManager;
             _configuration = configuration;
         }
 
@@ -52,6 +54,13 @@ namespace LegendCraft_Backend.Services
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
+            // Obtenemos los roles del usuario y los inyectamos en el Token
+            var userRoles = await _userManager.GetRolesAsync(user);
+            foreach (var userRole in userRoles)
+            {
+                authClaims.Add(new Claim(ClaimTypes.Role, userRole));
+            }
+
             // Leemos las llaves del appsettings
             var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
             int expireHours = Convert.ToInt32(_configuration["Jwt:ExpireHours"] ?? "2");
@@ -73,6 +82,26 @@ namespace LegendCraft_Backend.Services
                 FirstName = user.FirstName, 
                 Expiration = token.ValidTo
             };
+        }
+
+        public async Task<bool> MakeAdminAsync(string email)
+        {
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null) return false;
+
+            // Verificamos si el rol 'Admin' existe en la BD
+            if (!await _roleManager.RoleExistsAsync("Admin"))
+            {
+                await _roleManager.CreateAsync(new IdentityRole("Admin"));
+            }
+
+            // Asignamos el rol al usuario
+            if (!await _userManager.IsInRoleAsync(user, "Admin"))
+            {
+                await _userManager.AddToRoleAsync(user, "Admin");
+            }
+
+            return true;
         }
     }
 }

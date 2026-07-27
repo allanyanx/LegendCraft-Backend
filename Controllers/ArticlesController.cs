@@ -1,7 +1,8 @@
-﻿using LegendCraft_Backend.DTOs;
+using LegendCraft_Backend.DTOs;
 using LegendCraft_Backend.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace LegendCraft_Backend.Controllers
 {
@@ -17,6 +18,7 @@ namespace LegendCraft_Backend.Controllers
         }
 
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateArticle([FromBody] ArticleCreateDto dto)
         {
             // Validamos que el JSON no venga nulo o con errores básicos
@@ -33,6 +35,7 @@ namespace LegendCraft_Backend.Controllers
         }
 
         [HttpPost("{articleId}/images")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UploadImages(int articleId, [FromForm] List<IFormFile> files)
         {
             if (files == null || files.Count == 0)
@@ -47,6 +50,7 @@ namespace LegendCraft_Backend.Controllers
         }
 
         [HttpPut("{articleId}/images/{imageId}/set-main")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> SetMainImage(int articleId, int imageId)
         {
             try
@@ -87,6 +91,7 @@ namespace LegendCraft_Backend.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> UpdateArticle(int id, [FromBody] ArticleUpdateDto dto)
         {
             try
@@ -101,6 +106,7 @@ namespace LegendCraft_Backend.Controllers
         }
 
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteArticle(int id)
         {
             try
@@ -115,6 +121,7 @@ namespace LegendCraft_Backend.Controllers
         }
 
         [HttpDelete("{articleId}/images/{imageId}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteImage(int articleId, int imageId)
         {
             try

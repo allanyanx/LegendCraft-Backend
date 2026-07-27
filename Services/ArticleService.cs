@@ -1,4 +1,4 @@
-﻿using LegendCraft_Backend.Data;
+using LegendCraft_Backend.Data;
 using LegendCraft_Backend.DTOs;
 using LegendCraft_Backend.Models;
 using Microsoft.EntityFrameworkCore;
@@ -21,7 +21,9 @@ namespace LegendCraft_Backend.Services
             {
                 Name = dto.Name,
                 Price = dto.Price,
-                Stock = dto.Stock
+                Stock = dto.Stock,
+                IsPrintOnDemand = dto.IsPrintOnDemand,
+                PrintTimeDays = dto.PrintTimeDays
             };
 
             //Construcción de la lista de Highlights
@@ -137,6 +139,9 @@ namespace LegendCraft_Backend.Services
                     Id = a.Id,
                     Name = a.Name,
                     Price = a.Price,
+                    Stock = a.Stock,
+                    IsPrintOnDemand = a.IsPrintOnDemand,
+                    PrintTimeDays = a.PrintTimeDays,
                     MainImageUrl = a.Images.FirstOrDefault(i => i.IsMain) != null
                                    ? a.Images.FirstOrDefault(i => i.IsMain)!.ImageUrl
                                    : ""
@@ -171,6 +176,8 @@ namespace LegendCraft_Backend.Services
                 Name = article.Name,
                 Price = article.Price,
                 Stock = article.Stock,
+                IsPrintOnDemand = article.IsPrintOnDemand,
+                PrintTimeDays = article.PrintTimeDays,
                 // Aplanamos las viñetas, ordenadas por el DisplayOrder
                 Highlights = article.Highlights.OrderBy(h => h.DisplayOrder).Select(h => h.Text).ToList(),
                 // Aplanamos las imágenes
@@ -199,6 +206,8 @@ namespace LegendCraft_Backend.Services
             article.Name = dto.Name;
             article.Price = dto.Price;
             article.Stock = dto.Stock;
+            article.IsPrintOnDemand = dto.IsPrintOnDemand;
+            article.PrintTimeDays = dto.PrintTimeDays;
             article.UpdatedAt = DateTime.UtcNow; // Campo de auditoría
 
             // Actualizamos las viñetas (la forma más limpia es borrar las viejas y poner las nuevas)
