@@ -110,15 +110,25 @@ namespace LegendCraft_Backend.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task<PagedResultDto<ArticleListResponseDto>> GetAllArticlesAsync(int pageNumber, int pageSize)
+        public async Task<PagedResultDto<ArticleListResponseDto>> GetAllArticlesAsync(int pageNumber, int pageSize, string? search)
         {
-            // Contamos el total real de artículos activos en la base de datos
-            var totalRecords = await _context.Articles.CountAsync();
+            // 1. Iniciamos la consulta base, pero NO la ejecutamos todavía
+            var query = _context.Articles.AsQueryable();
 
-            // Aplicamos la paginación a nivel de SQL
-            var articles = await _context.Articles
+            // 2. Si el parámetro 'search' tiene texto, agregamos el filtro a la consulta
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                // Pasamos ambos a minúsculas para que la búsqueda no sea sensible a mayúsculas
+                query = query.Where(a => a.Name.ToLower().Contains(search.ToLower()));
+            }
+
+            // 3. Contamos el total de registros que coinciden con el filtro (vital para la paginación)
+            var totalRecords = await query.CountAsync();
+
+            // 4. Aplicamos el ordenamiento, la paginación y seleccionamos los datos
+            var articles = await query
                 .Include(a => a.Images)
-                .OrderByDescending(a => a.CreatedAt) // Ordenamos por los más recientes
+                .OrderByDescending(a => a.CreatedAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .Select(a => new ArticleListResponseDto
@@ -130,9 +140,9 @@ namespace LegendCraft_Backend.Services
                                    ? a.Images.FirstOrDefault(i => i.IsMain)!.ImageUrl
                                    : ""
                 })
-                .ToListAsync();
+                .ToListAsync(); // <-- ¡Aquí es donde realmente se ejecuta la consulta en PostgreSQL!
 
-            // Devolvemos el envoltorio con los datos y la metadata
+            // 5. Devolvemos el envoltorio con los resultados
             return new PagedResultDto<ArticleListResponseDto>
             {
                 Items = articles,

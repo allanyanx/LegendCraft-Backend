@@ -8,7 +8,7 @@ namespace LegendCraft_Backend.Services
         Task<int> CreateArticleAsync(ArticleCreateDto dto);
         Task<List<string>> SaveImagesAsync(int articleId, [FromForm] List<IFormFile> files);
         Task SetMainImageAsync(int articleId, int imageId);
-        Task<PagedResultDto<ArticleListResponseDto>> GetAllArticlesAsync(int pageNumber, int pageSize);
+        Task<PagedResultDto<ArticleListResponseDto>> GetAllArticlesAsync(int pageNumber, int pageSize, string? search);
         Task<ArticleDetailResponseDto?> GetArticleByIdAsync(int id);
         Task UpdateArticleAsync(int id, ArticleUpdateDto dto);
         Task DeleteArticleAsync(int id);
