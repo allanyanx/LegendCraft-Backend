@@ -20,6 +20,8 @@ namespace LegendCraft_Backend.Data
         public DbSet<ArticleAttributeValue> ArticleAttributes { get; set; }
         public DbSet<Order> Orders { get; set; }
         public DbSet<OrderItem> OrderItems { get; set; }
+        public DbSet<Cart> Carts { get; set; }
+        public DbSet<CartItem> CartItems { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -40,6 +42,8 @@ namespace LegendCraft_Backend.Data
             builder.Entity<ArticleHighlight>().HasQueryFilter(a => a.IsActive);
             builder.Entity<Order>().HasQueryFilter(a => a.IsActive);
             builder.Entity<OrderItem>().HasQueryFilter(a => a.IsActive);
+            builder.Entity<Cart>().HasQueryFilter(a => a.IsActive);
+            builder.Entity<CartItem>().HasQueryFilter(a => a.IsActive);
         }
     }
 }
