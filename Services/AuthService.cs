@@ -43,38 +43,37 @@ namespace LegendCraft_Backend.Services
                 return null; 
             }
 
-            // Preparamos los datos que irán DENTRO del Token (Payload)
-            // Fíjate que ahora tomamos el FirstName y LastName directamente de las propiedades del usuario
+            return await GenerateTokenAsync(user);
+        }
+
+        private async Task<AuthResponseDto> GenerateTokenAsync(ApplicationUser user)
+        {
             var authClaims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id),
                 new Claim(ClaimTypes.Email, user.Email!),
-                new Claim(ClaimTypes.GivenName, user.FirstName), // Lo leemos directo de la columna
-                new Claim(ClaimTypes.Surname, user.LastName),    // Lo leemos directo de la columna
+                new Claim(ClaimTypes.GivenName, user.FirstName), 
+                new Claim(ClaimTypes.Surname, user.LastName),    
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
             };
 
-            // Obtenemos los roles del usuario y los inyectamos en el Token
             var userRoles = await _userManager.GetRolesAsync(user);
             foreach (var userRole in userRoles)
             {
                 authClaims.Add(new Claim(ClaimTypes.Role, userRole));
             }
 
-            // Leemos las llaves del appsettings
             var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!));
             int expireHours = Convert.ToInt32(_configuration["Jwt:ExpireHours"] ?? "2");
 
-            // Generamos el Token
             var token = new JwtSecurityToken(
                 issuer: _configuration["Jwt:Issuer"],
                 audience: _configuration["Jwt:Audience"],
-                expires: DateTime.UtcNow.AddHours(expireHours), // Expiración en horas
+                expires: DateTime.UtcNow.AddHours(expireHours),
                 claims: authClaims,
                 signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
             );
 
-            // Devolvemos el DTO
             return new AuthResponseDto
             {
                 Token = new JwtSecurityTokenHandler().WriteToken(token),
@@ -106,15 +105,32 @@ namespace LegendCraft_Backend.Services
             return true;
         }
 
-        public async Task<IdentityResult> UpdateProfileAsync(string userId, UpdateProfileDto dto)
+        public async Task<(IdentityResult Result, AuthResponseDto? NewToken)> UpdateProfileAsync(string userId, UpdateProfileDto dto)
         {
             var user = await _userManager.FindByIdAsync(userId);
-            if (user == null) return IdentityResult.Failed(new IdentityError { Description = "Usuario no encontrado" });
+            if (user == null) return (IdentityResult.Failed(new IdentityError { Description = "Usuario no encontrado" }), null);
 
             user.FirstName = dto.FirstName;
             user.LastName = dto.LastName;
 
-            return await _userManager.UpdateAsync(user);
+            var result = await _userManager.UpdateAsync(user);
+            if (!result.Succeeded) return (result, null);
+
+            var newToken = await GenerateTokenAsync(user);
+            return (result, newToken);
+        }
+
+        public async Task<UserProfileDto?> GetProfileAsync(string userId)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return null;
+
+            return new UserProfileDto
+            {
+                Email = user.Email ?? "",
+                FirstName = user.FirstName,
+                LastName = user.LastName
+            };
         }
 
         public async Task<IdentityResult> ChangePasswordAsync(string userId, ChangePasswordDto dto)

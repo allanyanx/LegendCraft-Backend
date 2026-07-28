@@ -48,18 +48,13 @@ namespace LegendCraft_Backend.Controllers
 
         [HttpGet("me")]
         [Microsoft.AspNetCore.Authorization.Authorize]
-        public IActionResult GetProfile()
+        public async Task<IActionResult> GetProfile()
         {
-            var email = User.FindFirstValue(System.Security.Claims.ClaimTypes.Email);
-            var firstName = User.FindFirstValue(System.Security.Claims.ClaimTypes.GivenName);
-            var lastName = User.FindFirstValue(System.Security.Claims.ClaimTypes.Surname);
+            var userId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier);
+            if (userId == null) return Unauthorized();
 
-            var profile = new UserProfileDto
-            {
-                Email = email ?? "",
-                FirstName = firstName ?? "",
-                LastName = lastName ?? ""
-            };
+            var profile = await _authService.GetProfileAsync(userId);
+            if (profile == null) return NotFound();
 
             return Ok(profile);
         }
@@ -83,14 +78,14 @@ namespace LegendCraft_Backend.Controllers
             var userId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier);
             if (userId == null) return Unauthorized();
 
-            var result = await _authService.UpdateProfileAsync(userId, dto);
+            var (result, newToken) = await _authService.UpdateProfileAsync(userId, dto);
             if (!result.Succeeded)
             {
                 var errors = result.Errors.Select(e => e.Description);
                 return BadRequest(new { Message = "Error al actualizar perfil", Errors = errors });
             }
 
-            return Ok(new { Message = "Perfil actualizado con éxito" });
+            return Ok(new { Message = "Perfil actualizado con éxito", Token = newToken });
         }
 
         [HttpPut("change-password")]
