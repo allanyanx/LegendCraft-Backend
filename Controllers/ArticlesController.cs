@@ -68,12 +68,13 @@ namespace LegendCraft_Backend.Controllers
         public async Task<IActionResult> GetAllArticles(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,
-        [FromQuery] string? search = null) // Nuevo parámetro opcional
+        [FromQuery] string? search = null,
+        [FromQuery] List<int>? attributeValues = null)
         {
             if (pageNumber <= 0) pageNumber = 1;
             if (pageSize <= 0 || pageSize > 50) pageSize = 10;
 
-            var result = await _articleService.GetAllArticlesAsync(pageNumber, pageSize, search);
+            var result = await _articleService.GetAllArticlesAsync(pageNumber, pageSize, search, attributeValues);
             return Ok(result);
         }
 

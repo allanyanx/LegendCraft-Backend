@@ -113,7 +113,7 @@ namespace LegendCraft_Backend.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task<PagedResultDto<ArticleListResponseDto>> GetAllArticlesAsync(int pageNumber, int pageSize, string? search)
+        public async Task<PagedResultDto<ArticleListResponseDto>> GetAllArticlesAsync(int pageNumber, int pageSize, string? search, List<int>? attributeValues = null)
         {
             // 1. Iniciamos la consulta base, pero NO la ejecutamos todavía
             var query = _context.Articles.AsQueryable();
@@ -123,6 +123,13 @@ namespace LegendCraft_Backend.Services
             {
                 // Pasamos ambos a minúsculas para que la búsqueda no sea sensible a mayúsculas
                 query = query.Where(a => a.Name.ToLower().Contains(search.ToLower()));
+            }
+
+            // 2.5 Filtrado por atributos (Si enviaron IDs de los checkboxes)
+            if (attributeValues != null && attributeValues.Any())
+            {
+                // Solo traemos artículos que tengan AL MENOS UNO de los atributos seleccionados (Lógica OR)
+                query = query.Where(a => a.ArticleAttributes.Any(aa => attributeValues.Contains(aa.AttributeValueId)));
             }
 
             // 3. Contamos el total de registros que coinciden con el filtro (vital para la paginación)
