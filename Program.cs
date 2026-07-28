@@ -20,7 +20,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Esto conecta las clases de usuario de Microsoft con tu base de datos PostgreSQL
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
-    .AddDefaultTokenProviders();
+    .AddDefaultTokenProviders()
+    .AddErrorDescriber<LegendCraft_Backend.Helpers.CustomIdentityErrorDescriber>();
 
 // CONFIGURACIÓN DE JWT
 // Leemos la clave secreta desde el appsettings.json (o secrets.json)
