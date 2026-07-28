@@ -65,6 +65,7 @@ namespace LegendCraft_Backend.Controllers
         }
 
         [HttpGet]
+        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<IActionResult> GetAllArticles(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,

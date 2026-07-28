@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: legendcraft_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: contraseña_local
+      POSTGRES_DB: LegendCraftDB
+    ports:
+      # Exponemos el puerto 5433 al host para que NO haga conflicto 
+      # con tu PostgreSQL local (que suele usar el 5432)
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: legendcraft_backend
+    restart: always
+    environment:
+      # Host=db conecta al contenedor de arriba.
+      - ConnectionStrings__DefaultConnection=Host=db;Database=LegendCraftDB;Username=postgres;Password=contraseña_local
+      - Jwt__Key=CLAVE_FALSA_PARA_EL_REPOSITORIO_LA_CLAVE_REAL_DEBE_ESTAR_EN_LOS_USER_SECRETS
+      - Jwt__Issuer=LegendCraft-Backend
+      - Jwt__Audience=LegendCraft-Frontend
+    volumes:
+      # AQUÍ ESTÁ LA MAGIA: Tu carpeta física mapeada a un volumen seguro
+      - app_uploads:/app/Uploads
+    depends_on:
+      - db
+
+  nginx:
+    image: nginx:alpine
+    container_name: legendcraft_nginx
+    restart: always
+    ports:
+      # El frontend se conectará al puerto 5000 
+      # (Nginx recibe la petición y decide si es imagen o si va al backend)
+      - "5000:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      # Nginx tiene lectura de las mismas imágenes
+      - app_uploads:/usr/share/nginx/html/imagenes:ro
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+  app_uploads:

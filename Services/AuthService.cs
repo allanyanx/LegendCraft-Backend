@@ -81,7 +81,8 @@ namespace LegendCraft_Backend.Services
                 FirstName = user.FirstName, 
                 LastName = user.LastName,
                 Expiration = token.ValidTo,
-                Roles = userRoles
+                Roles = userRoles,
+                RefreshToken = await GenerateAndSaveRefreshTokenAsync(user)
             };
         }
 
@@ -139,6 +140,64 @@ namespace LegendCraft_Backend.Services
             if (user == null) return IdentityResult.Failed(new IdentityError { Description = "Usuario no encontrado" });
 
             return await _userManager.ChangePasswordAsync(user, dto.CurrentPassword, dto.NewPassword);
+        }
+
+        public async Task<AuthResponseDto?> RefreshTokenAsync(RefreshTokenDto dto)
+        {
+            var principal = GetPrincipalFromExpiredToken(dto.Token);
+            if (principal == null) return null;
+
+            var email = principal.FindFirstValue(ClaimTypes.Email);
+            if (email == null) return null;
+
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null || user.RefreshToken != dto.RefreshToken || user.RefreshTokenExpiryTime <= DateTime.UtcNow)
+            {
+                return null;
+            }
+
+            return await GenerateTokenAsync(user);
+        }
+
+        private async Task<string> GenerateAndSaveRefreshTokenAsync(ApplicationUser user)
+        {
+            var refreshToken = Guid.NewGuid().ToString("N");
+            user.RefreshToken = refreshToken;
+            // El Refresh Token durará 30 días
+            user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(30);
+            await _userManager.UpdateAsync(user);
+            return refreshToken;
+        }
+
+        private ClaimsPrincipal? GetPrincipalFromExpiredToken(string token)
+        {
+            var tokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateAudience = true,
+                ValidateIssuer = true,
+                ValidIssuer = _configuration["Jwt:Issuer"],
+                ValidAudience = _configuration["Jwt:Audience"],
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!)),
+                ValidateLifetime = false // Ignoramos la expiración porque sabemos que ya expiró
+            };
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            try
+            {
+                var principal = tokenHandler.ValidateToken(token, tokenValidationParameters, out SecurityToken securityToken);
+                var jwtSecurityToken = securityToken as JwtSecurityToken;
+                
+                if (jwtSecurityToken == null || !jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    return null;
+                }
+                return principal;
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 }

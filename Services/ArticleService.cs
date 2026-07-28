@@ -45,19 +45,44 @@ namespace LegendCraft_Backend.Services
 
         public async Task<List<string>> SaveImagesAsync(int articleId, List<IFormFile> files)
         {
-            // Validamos que el artículo exista en la base de datos
-            var article = await _context.Articles.FindAsync(articleId);
+            // Validamos que el artículo exista en la base de datos e incluimos sus imágenes para evitar NullReferenceException
+            var article = await _context.Articles
+                .Include(a => a.Images)
+                .FirstOrDefaultAsync(a => a.Id == articleId);
+
             if (article == null) throw new Exception("Artículo no encontrado");
 
             var savedUrls = new List<string>();
-            var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
+            
+            // Usamos el ID del artículo para la carpeta (Ej: article_15) 
+            // Es más seguro que usar el nombre porque evita caracteres inválidos o cambios de nombre.
+            var articleFolderName = $"article_{articleId}";
+            var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "Uploads", articleFolderName);
+
+            if (!Directory.Exists(uploadsPath))
+            {
+                Directory.CreateDirectory(uploadsPath);
+            }
 
             foreach (var file in files)
             {
                 if (file.Length > 0)
                 {
+                    // Obtenemos la extensión. Si viene vacía (ej. porque Angular lo mandó como "blob"), la deducimos del Content-Type
+                    var extension = Path.GetExtension(file.FileName);
+                    if (string.IsNullOrEmpty(extension))
+                    {
+                        extension = file.ContentType switch
+                        {
+                            "image/webp" => ".webp",
+                            "image/png" => ".png",
+                            "image/jpeg" => ".jpg",
+                            _ => ".webp" // Fallback a webp porque nuestro frontend comprime a webp
+                        };
+                    }
+
                     // Generamos un nombre único para evitar sobreescribir fotos con el mismo nombre
-                    var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+                    var fileName = $"{Guid.NewGuid()}{extension}";
                     var filePath = Path.Combine(uploadsPath, fileName);
 
                     // Guardamos el archivo físicamente en el disco
@@ -67,7 +92,7 @@ namespace LegendCraft_Backend.Services
                     }
 
                     // Construimos la URL relativa que se guardará en PostgreSQL
-                    var imageUrl = $"/imagenes/{fileName}";
+                    var imageUrl = $"/imagenes/{articleFolderName}/{fileName}";
 
                     // Si es la primera imagen que subimos, la marcamos como principal
                     bool isMainImage = !article.Images.Any();
@@ -138,7 +163,7 @@ namespace LegendCraft_Backend.Services
             // 4. Aplicamos el ordenamiento, la paginación y seleccionamos los datos
             var articles = await query
                 .Include(a => a.Images)
-                .OrderByDescending(a => a.CreatedAt)
+                .OrderByDescending(a => a.Id) // Ordenar por Id asegura que el más nuevo esté primero SIEMPRE
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .Select(a => new ArticleListResponseDto
@@ -254,10 +279,11 @@ namespace LegendCraft_Backend.Services
 
             if (image == null) throw new Exception("Imagen no encontrada");
 
-            // Borramos el archivo físico del disco duro de tu servidor
+            // Extraemos la ruta relativa desde la URL guardada (Ej: /imagenes/article_1/foto.jpg -> article_1/foto.jpg)
+            var relativePath = image.ImageUrl.Replace("/imagenes/", "").Replace("/", Path.DirectorySeparatorChar.ToString());
+            
             var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
-            var fileName = Path.GetFileName(image.ImageUrl); // Extraemos solo el nombre del archivo
-            var physicalPath = Path.Combine(uploadsPath, fileName);
+            var physicalPath = Path.Combine(uploadsPath, relativePath);
 
             if (File.Exists(physicalPath))
             {

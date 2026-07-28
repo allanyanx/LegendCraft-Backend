@@ -46,6 +46,19 @@ namespace LegendCraft_Backend.Controllers
             return Ok(response);
         }
 
+        [HttpPost("refresh-token")]
+        public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenDto dto)
+        {
+            var response = await _authService.RefreshTokenAsync(dto);
+
+            if (response == null)
+            {
+                return Unauthorized(new { Message = "Token inválido o expirado. Inicia sesión nuevamente." });
+            }
+
+            return Ok(response);
+        }
+
         [HttpGet("me")]
         [Microsoft.AspNetCore.Authorization.Authorize]
         public async Task<IActionResult> GetProfile()

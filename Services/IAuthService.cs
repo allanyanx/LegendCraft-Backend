@@ -11,5 +11,6 @@ namespace LegendCraft_Backend.Services
         Task<(IdentityResult Result, AuthResponseDto? NewToken)> UpdateProfileAsync(string userId, UpdateProfileDto dto);
         Task<IdentityResult> ChangePasswordAsync(string userId, ChangePasswordDto dto);
         Task<UserProfileDto?> GetProfileAsync(string userId);
+        Task<AuthResponseDto?> RefreshTokenAsync(RefreshTokenDto dto);
     }
 }

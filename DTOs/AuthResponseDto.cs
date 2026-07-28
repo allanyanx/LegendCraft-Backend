@@ -9,5 +9,6 @@ namespace LegendCraft_Backend.DTOs
 
         public DateTime Expiration { get; set; }
         public IList<string> Roles { get; set; } = new List<string>();
+        public string RefreshToken { get; set; } = string.Empty;
     }
 }
