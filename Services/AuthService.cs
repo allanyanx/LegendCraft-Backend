@@ -80,7 +80,9 @@ namespace LegendCraft_Backend.Services
                 Token = new JwtSecurityTokenHandler().WriteToken(token),
                 Email = user.Email!,
                 FirstName = user.FirstName, 
-                Expiration = token.ValidTo
+                LastName = user.LastName,
+                Expiration = token.ValidTo,
+                Roles = userRoles
             };
         }
 
@@ -102,6 +104,25 @@ namespace LegendCraft_Backend.Services
             }
 
             return true;
+        }
+
+        public async Task<IdentityResult> UpdateProfileAsync(string userId, UpdateProfileDto dto)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return IdentityResult.Failed(new IdentityError { Description = "Usuario no encontrado" });
+
+            user.FirstName = dto.FirstName;
+            user.LastName = dto.LastName;
+
+            return await _userManager.UpdateAsync(user);
+        }
+
+        public async Task<IdentityResult> ChangePasswordAsync(string userId, ChangePasswordDto dto)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null) return IdentityResult.Failed(new IdentityError { Description = "Usuario no encontrado" });
+
+            return await _userManager.ChangePasswordAsync(user, dto.CurrentPassword, dto.NewPassword);
         }
     }
 }

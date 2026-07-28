@@ -75,5 +75,39 @@ namespace LegendCraft_Backend.Controllers
 
             return Ok(new { Message = $"El usuario {email} ahora tiene rol de Administrador." });
         }
+
+        [HttpPut("update-profile")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto dto)
+        {
+            var userId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier);
+            if (userId == null) return Unauthorized();
+
+            var result = await _authService.UpdateProfileAsync(userId, dto);
+            if (!result.Succeeded)
+            {
+                var errors = result.Errors.Select(e => e.Description);
+                return BadRequest(new { Message = "Error al actualizar perfil", Errors = errors });
+            }
+
+            return Ok(new { Message = "Perfil actualizado con éxito" });
+        }
+
+        [HttpPut("change-password")]
+        [Microsoft.AspNetCore.Authorization.Authorize]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+        {
+            var userId = User.FindFirstValue(System.Security.Claims.ClaimTypes.NameIdentifier);
+            if (userId == null) return Unauthorized();
+
+            var result = await _authService.ChangePasswordAsync(userId, dto);
+            if (!result.Succeeded)
+            {
+                var errors = result.Errors.Select(e => e.Description);
+                return BadRequest(new { Message = "Error al cambiar la contraseña", Errors = errors });
+            }
+
+            return Ok(new { Message = "Contraseña cambiada con éxito" });
+        }
     }
 }

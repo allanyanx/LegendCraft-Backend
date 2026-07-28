@@ -52,6 +52,7 @@ builder.Services.AddAuthentication(options =>
 
 // Inyección de dependencias de tus servicios
 builder.Services.AddScoped<IArticleService, ArticleService>();
+builder.Services.AddScoped<IAttributeService, AttributeService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<ICartService, CartService>();

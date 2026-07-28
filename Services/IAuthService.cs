@@ -8,5 +8,7 @@ namespace LegendCraft_Backend.Services
         Task<IdentityResult> RegisterAsync(RegisterDto dto);
         Task<AuthResponseDto?> LoginAsync(LoginDto dto);
         Task<bool> MakeAdminAsync(string email);
+        Task<IdentityResult> UpdateProfileAsync(string userId, UpdateProfileDto dto);
+        Task<IdentityResult> ChangePasswordAsync(string userId, ChangePasswordDto dto);
     }
 }
