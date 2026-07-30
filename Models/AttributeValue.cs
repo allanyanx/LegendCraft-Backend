@@ -2,7 +2,6 @@
 {
     public class AttributeValue : BaseEntity
     {
-        public int Id { get; set; }
         public string Value { get; set; } = string.Empty; 
 
         public int AttributeTypeId { get; set; }
