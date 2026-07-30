@@ -20,6 +20,7 @@ namespace LegendCraft_Backend.Services
             var article = new Article
             {
                 Name = dto.Name,
+                Description = dto.Description,
                 Price = dto.Price,
                 Stock = dto.Stock,
                 IsPrintOnDemand = dto.IsPrintOnDemand,
@@ -34,6 +35,18 @@ namespace LegendCraft_Backend.Services
                     Text = dto.Highlights[i],
                     DisplayOrder = i + 1
                 });
+            }
+
+            // Atributos
+            if (dto.AttributeValueIds != null && dto.AttributeValueIds.Any())
+            {
+                foreach (var attrId in dto.AttributeValueIds)
+                {
+                    article.ArticleAttributes.Add(new ArticleAttributeValue
+                    {
+                        AttributeValueId = attrId
+                    });
+                }
             }
 
             //Guardado en PostgreSQL
@@ -146,8 +159,15 @@ namespace LegendCraft_Backend.Services
             // 2. Si el parámetro 'search' tiene texto, agregamos el filtro a la consulta
             if (!string.IsNullOrWhiteSpace(search))
             {
-                // Pasamos ambos a minúsculas para que la búsqueda no sea sensible a mayúsculas
-                query = query.Where(a => a.Name.ToLower().Contains(search.ToLower()));
+                var searchLower = search.ToLower();
+                query = query.Where(a => 
+                    a.Name.ToLower().Contains(searchLower) ||
+                    a.Description.ToLower().Contains(searchLower) ||
+                    a.Highlights.Any(h => h.Text.ToLower().Contains(searchLower)) ||
+                    a.ArticleAttributes.Any(aa => 
+                        aa.AttributeValue.Value.ToLower().Contains(searchLower) || 
+                        aa.AttributeValue.AttributeType.Name.ToLower().Contains(searchLower))
+                );
             }
 
             // 2.5 Filtrado por atributos (Si enviaron IDs de los checkboxes)
@@ -170,6 +190,7 @@ namespace LegendCraft_Backend.Services
                 {
                     Id = a.Id,
                     Name = a.Name,
+                    Description = a.Description,
                     Price = a.Price,
                     Stock = a.Stock,
                     IsPrintOnDemand = a.IsPrintOnDemand,
@@ -206,6 +227,7 @@ namespace LegendCraft_Backend.Services
             {
                 Id = article.Id,
                 Name = article.Name,
+                Description = article.Description,
                 Price = article.Price,
                 Stock = article.Stock,
                 IsPrintOnDemand = article.IsPrintOnDemand,
@@ -220,10 +242,12 @@ namespace LegendCraft_Backend.Services
                     IsMain = i.IsMain
                 }).ToList(),
                 // Construimos un diccionario clave-valor para los atributos
-                Attributes = article.ArticleAttributes.ToDictionary(
-                    aa => aa.AttributeValue.AttributeType.Name,
-                    aa => aa.AttributeValue.Value
-                )
+                Attributes = article.ArticleAttributes
+                    .GroupBy(aa => aa.AttributeValue.AttributeType.Name)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => string.Join(", ", g.Select(aa => aa.AttributeValue.Value))
+                    )
             };
         }
 
@@ -231,11 +255,13 @@ namespace LegendCraft_Backend.Services
         {
             var article = await _context.Articles
                 .Include(a => a.Highlights) // Incluimos las viñetas para poder reemplazarlas
+                .Include(a => a.ArticleAttributes)
                 .FirstOrDefaultAsync(a => a.Id == id);
 
             if (article == null) throw new Exception("Artículo no encontrado");
 
             article.Name = dto.Name;
+            article.Description = dto.Description;
             article.Price = dto.Price;
             article.Stock = dto.Stock;
             article.IsPrintOnDemand = dto.IsPrintOnDemand;
@@ -252,6 +278,18 @@ namespace LegendCraft_Backend.Services
                     Text = dto.Highlights[i],
                     DisplayOrder = i + 1
                 });
+            }
+
+            _context.RemoveRange(article.ArticleAttributes);
+            if (dto.AttributeValueIds != null && dto.AttributeValueIds.Any())
+            {
+                foreach (var attrId in dto.AttributeValueIds)
+                {
+                    article.ArticleAttributes.Add(new ArticleAttributeValue
+                    {
+                        AttributeValueId = attrId
+                    });
+                }
             }
 
             await _context.SaveChangesAsync();
