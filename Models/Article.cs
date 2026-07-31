@@ -9,6 +9,7 @@ namespace LegendCraft_Backend.Models
         
         // Atributos de Impresión 3D
         public bool IsPrintOnDemand { get; set; } = true;
+        public bool RequiresQuote { get; set; } = false;
         public int PrintTimeDays { get; set; } = 3;
 
         // Relaciones

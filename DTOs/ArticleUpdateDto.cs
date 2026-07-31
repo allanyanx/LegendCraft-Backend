@@ -7,6 +7,7 @@ namespace LegendCraft_Backend.DTOs
         public decimal Price { get; set; }
         public int Stock { get; set; }
         public bool IsPrintOnDemand { get; set; }
+        public bool RequiresQuote { get; set; }
         public int PrintTimeDays { get; set; }
 
         public List<string> Highlights { get; set; } = new();
