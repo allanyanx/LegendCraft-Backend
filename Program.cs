@@ -81,7 +81,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 // APLICAR POLÍTICA CORS (Antes de Autenticación)
 app.UseCors("AllowAll");

@@ -151,7 +151,7 @@ namespace LegendCraft_Backend.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task<PagedResultDto<ArticleListResponseDto>> GetAllArticlesAsync(int pageNumber, int pageSize, string? search, List<int>? attributeValues = null)
+        public async Task<PagedResultDto<ArticleListResponseDto>> GetAllArticlesAsync(int pageNumber, int pageSize, string? search, List<int>? attributeValues = null, decimal? maxPrice = null, string? sortBy = null)
         {
             // 1. Iniciamos la consulta base, pero NO la ejecutamos todavía
             var query = _context.Articles.AsQueryable();
@@ -177,13 +177,30 @@ namespace LegendCraft_Backend.Services
                 query = query.Where(a => a.ArticleAttributes.Any(aa => attributeValues.Contains(aa.AttributeValueId)));
             }
 
+            // 2.6 Filtrado por precio máximo
+            if (maxPrice.HasValue)
+            {
+                query = query.Where(a => a.Price <= maxPrice.Value);
+            }
+
             // 3. Contamos el total de registros que coinciden con el filtro (vital para la paginación)
             var totalRecords = await query.CountAsync();
 
-            // 4. Aplicamos el ordenamiento, la paginación y seleccionamos los datos
+            // 4. Aplicamos el ordenamiento
+            query = sortBy switch
+            {
+                "reciente" => query.OrderByDescending(a => a.CreatedAt),
+                "antiguo" => query.OrderBy(a => a.CreatedAt),
+                "precio_asc" => query.OrderBy(a => a.Price),
+                "precio_desc" => query.OrderByDescending(a => a.Price),
+                "nombre_asc" => query.OrderBy(a => a.Name),
+                "nombre_desc" => query.OrderByDescending(a => a.Name),
+                _ => query.OrderByDescending(a => a.Id) // relevantes o default
+            };
+
+            // Paginación y selección de datos
             var articles = await query
                 .Include(a => a.Images)
-                .OrderByDescending(a => a.Id) // Ordenar por Id asegura que el más nuevo esté primero SIEMPRE
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .Select(a => new ArticleListResponseDto

@@ -70,12 +70,14 @@ namespace LegendCraft_Backend.Controllers
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,
         [FromQuery] string? search = null,
-        [FromQuery] List<int>? attributeValues = null)
+        [FromQuery] List<int>? attributeValues = null,
+        [FromQuery] decimal? maxPrice = null,
+        [FromQuery] string? sortBy = "relevantes")
         {
             if (pageNumber <= 0) pageNumber = 1;
             if (pageSize <= 0 || pageSize > 50) pageSize = 10;
 
-            var result = await _articleService.GetAllArticlesAsync(pageNumber, pageSize, search, attributeValues);
+            var result = await _articleService.GetAllArticlesAsync(pageNumber, pageSize, search, attributeValues, maxPrice, sortBy);
             return Ok(result);
         }
 
