@@ -3,11 +3,13 @@ namespace LegendCraft_Backend.Models
     public class Article : BaseEntity
     {
         public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
         public decimal Price { get; set; }
         public int Stock { get; set; }
         
         // Atributos de Impresión 3D
         public bool IsPrintOnDemand { get; set; } = true;
+        public bool RequiresQuote { get; set; } = false;
         public int PrintTimeDays { get; set; } = 3;
 
         // Relaciones

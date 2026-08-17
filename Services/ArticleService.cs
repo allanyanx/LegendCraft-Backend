@@ -20,6 +20,7 @@ namespace LegendCraft_Backend.Services
             var article = new Article
             {
                 Name = dto.Name,
+                Description = dto.Description,
                 Price = dto.Price,
                 Stock = dto.Stock,
                 IsPrintOnDemand = dto.IsPrintOnDemand,
@@ -34,6 +35,18 @@ namespace LegendCraft_Backend.Services
                     Text = dto.Highlights[i],
                     DisplayOrder = i + 1
                 });
+            }
+
+            // Atributos
+            if (dto.AttributeValueIds != null && dto.AttributeValueIds.Any())
+            {
+                foreach (var attrId in dto.AttributeValueIds)
+                {
+                    article.ArticleAttributes.Add(new ArticleAttributeValue
+                    {
+                        AttributeValueId = attrId
+                    });
+                }
             }
 
             //Guardado en PostgreSQL
@@ -138,7 +151,7 @@ namespace LegendCraft_Backend.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task<PagedResultDto<ArticleListResponseDto>> GetAllArticlesAsync(int pageNumber, int pageSize, string? search, List<int>? attributeValues = null)
+        public async Task<PagedResultDto<ArticleListResponseDto>> GetAllArticlesAsync(int pageNumber, int pageSize, string? search, List<int>? attributeValues = null, decimal? maxPrice = null, string? sortBy = null)
         {
             // 1. Iniciamos la consulta base, pero NO la ejecutamos todavía
             var query = _context.Articles.AsQueryable();
@@ -146,8 +159,15 @@ namespace LegendCraft_Backend.Services
             // 2. Si el parámetro 'search' tiene texto, agregamos el filtro a la consulta
             if (!string.IsNullOrWhiteSpace(search))
             {
-                // Pasamos ambos a minúsculas para que la búsqueda no sea sensible a mayúsculas
-                query = query.Where(a => a.Name.ToLower().Contains(search.ToLower()));
+                var searchLower = search.ToLower();
+                query = query.Where(a => 
+                    a.Name.ToLower().Contains(searchLower) ||
+                    a.Description.ToLower().Contains(searchLower) ||
+                    a.Highlights.Any(h => h.Text.ToLower().Contains(searchLower)) ||
+                    a.ArticleAttributes.Any(aa => 
+                        aa.AttributeValue.Value.ToLower().Contains(searchLower) || 
+                        aa.AttributeValue.AttributeType.Name.ToLower().Contains(searchLower))
+                );
             }
 
             // 2.5 Filtrado por atributos (Si enviaron IDs de los checkboxes)
@@ -157,19 +177,37 @@ namespace LegendCraft_Backend.Services
                 query = query.Where(a => a.ArticleAttributes.Any(aa => attributeValues.Contains(aa.AttributeValueId)));
             }
 
+            // 2.6 Filtrado por precio máximo
+            if (maxPrice.HasValue)
+            {
+                query = query.Where(a => a.Price <= maxPrice.Value);
+            }
+
             // 3. Contamos el total de registros que coinciden con el filtro (vital para la paginación)
             var totalRecords = await query.CountAsync();
 
-            // 4. Aplicamos el ordenamiento, la paginación y seleccionamos los datos
+            // 4. Aplicamos el ordenamiento
+            query = sortBy switch
+            {
+                "reciente" => query.OrderByDescending(a => a.CreatedAt),
+                "antiguo" => query.OrderBy(a => a.CreatedAt),
+                "precio_asc" => query.OrderBy(a => a.Price),
+                "precio_desc" => query.OrderByDescending(a => a.Price),
+                "nombre_asc" => query.OrderBy(a => a.Name),
+                "nombre_desc" => query.OrderByDescending(a => a.Name),
+                _ => query.OrderByDescending(a => a.Id) // relevantes o default
+            };
+
+            // Paginación y selección de datos
             var articles = await query
                 .Include(a => a.Images)
-                .OrderByDescending(a => a.Id) // Ordenar por Id asegura que el más nuevo esté primero SIEMPRE
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
                 .Select(a => new ArticleListResponseDto
                 {
                     Id = a.Id,
                     Name = a.Name,
+                    Description = a.Description,
                     Price = a.Price,
                     Stock = a.Stock,
                     IsPrintOnDemand = a.IsPrintOnDemand,
@@ -206,6 +244,7 @@ namespace LegendCraft_Backend.Services
             {
                 Id = article.Id,
                 Name = article.Name,
+                Description = article.Description,
                 Price = article.Price,
                 Stock = article.Stock,
                 IsPrintOnDemand = article.IsPrintOnDemand,
@@ -220,10 +259,12 @@ namespace LegendCraft_Backend.Services
                     IsMain = i.IsMain
                 }).ToList(),
                 // Construimos un diccionario clave-valor para los atributos
-                Attributes = article.ArticleAttributes.ToDictionary(
-                    aa => aa.AttributeValue.AttributeType.Name,
-                    aa => aa.AttributeValue.Value
-                )
+                Attributes = article.ArticleAttributes
+                    .GroupBy(aa => aa.AttributeValue.AttributeType.Name)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => string.Join(", ", g.Select(aa => aa.AttributeValue.Value))
+                    )
             };
         }
 
@@ -231,11 +272,13 @@ namespace LegendCraft_Backend.Services
         {
             var article = await _context.Articles
                 .Include(a => a.Highlights) // Incluimos las viñetas para poder reemplazarlas
+                .Include(a => a.ArticleAttributes)
                 .FirstOrDefaultAsync(a => a.Id == id);
 
             if (article == null) throw new Exception("Artículo no encontrado");
 
             article.Name = dto.Name;
+            article.Description = dto.Description;
             article.Price = dto.Price;
             article.Stock = dto.Stock;
             article.IsPrintOnDemand = dto.IsPrintOnDemand;
@@ -252,6 +295,18 @@ namespace LegendCraft_Backend.Services
                     Text = dto.Highlights[i],
                     DisplayOrder = i + 1
                 });
+            }
+
+            _context.RemoveRange(article.ArticleAttributes);
+            if (dto.AttributeValueIds != null && dto.AttributeValueIds.Any())
+            {
+                foreach (var attrId in dto.AttributeValueIds)
+                {
+                    article.ArticleAttributes.Add(new ArticleAttributeValue
+                    {
+                        AttributeValueId = attrId
+                    });
+                }
             }
 
             await _context.SaveChangesAsync();
