@@ -3,6 +3,7 @@ using System;
 using LegendCraft_Backend.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace LegendCraft_Backend.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260807170814_SeedCategoriasSql")]
+    partial class SeedCategoriasSql
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -115,16 +118,7 @@ namespace LegendCraft_Backend.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<decimal?>("DiscountPercentage")
-                        .HasColumnType("numeric");
-
-                    b.Property<decimal?>("DiscountPrice")
-                        .HasColumnType("numeric");
-
                     b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsOnSale")
                         .HasColumnType("boolean");
 
                     b.Property<bool>("IsPrintOnDemand")
@@ -142,9 +136,6 @@ namespace LegendCraft_Backend.Migrations
 
                     b.Property<bool>("RequiresQuote")
                         .HasColumnType("boolean");
-
-                    b.Property<int>("SalesCount")
-                        .HasColumnType("integer");
 
                     b.Property<int>("Stock")
                         .HasColumnType("integer");
@@ -297,39 +288,6 @@ namespace LegendCraft_Backend.Migrations
                     b.ToTable("AttributeValues");
                 });
 
-            modelBuilder.Entity("LegendCraft_Backend.Models.Banner", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("DisplayOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("ImageUrl")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Banners");
-                });
-
             modelBuilder.Entity("LegendCraft_Backend.Models.Cart", b =>
                 {
                     b.Property<int>("Id")
@@ -340,9 +298,6 @@ namespace LegendCraft_Backend.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("GuestId")
-                        .HasColumnType("text");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
@@ -393,39 +348,6 @@ namespace LegendCraft_Backend.Migrations
                     b.HasIndex("CartId");
 
                     b.ToTable("CartItems");
-                });
-
-            modelBuilder.Entity("LegendCraft_Backend.Models.Faq", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Answer")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("DisplayOrder")
-                        .HasColumnType("integer");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("Question")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Faqs");
                 });
 
             modelBuilder.Entity("LegendCraft_Backend.Models.Order", b =>

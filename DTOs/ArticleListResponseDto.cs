@@ -10,6 +10,9 @@ namespace LegendCraft_Backend.DTOs
         public bool IsPrintOnDemand { get; set; }
         public bool RequiresQuote { get; set; }
         public int PrintTimeDays { get; set; }
+        public bool IsOnSale { get; set; }
+        public decimal? DiscountPrice { get; set; }
+        public decimal? DiscountPercentage { get; set; }
         
         public string MainImageUrl { get; set; } = string.Empty;
     }

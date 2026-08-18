@@ -14,64 +14,92 @@ namespace LegendCraft_Backend.Services
             _context = context;
         }
 
-        public async Task<OrderResponseDto> CreateOrderAsync(OrderCreateDto createDto, string? userId)
+        public async Task<OrderResponseDto> CreateOrderAsync(OrderCreateDto createDto, string identifier, bool isGuest)
         {
-            var order = new Order
+            using var transaction = await _context.Database.BeginTransactionAsync();
+            try
             {
-                UserId = userId,
-                GuestEmail = createDto.GuestEmail,
-                GuestFirstName = createDto.GuestFirstName,
-                GuestLastName = createDto.GuestLastName,
-                ShippingAddress = createDto.ShippingAddress,
-                ContactPhone = createDto.ContactPhone,
-                PaymentMethod = createDto.PaymentMethod,
-                OrderDate = DateTime.UtcNow,
-                Status = OrderStatus.Pending,
-                TrackingNumber = Guid.NewGuid()
-            };
-
-            decimal totalAmount = 0;
-
-            foreach (var itemDto in createDto.Items)
-            {
-                var article = await _context.Articles.FindAsync(itemDto.ArticleId);
-                if (article == null)
+                Cart? cart = null;
+                if (isGuest)
                 {
-                    throw new Exception($"Artículo con ID {itemDto.ArticleId} no encontrado.");
+                    cart = await _context.Carts
+                        .Include(c => c.Items).ThenInclude(i => i.Article)
+                        .FirstOrDefaultAsync(c => c.GuestId == identifier && c.IsActive);
+                }
+                else
+                {
+                    cart = await _context.Carts
+                        .Include(c => c.Items).ThenInclude(i => i.Article)
+                        .FirstOrDefaultAsync(c => c.UserId == identifier && c.IsActive);
                 }
 
-                if (!article.IsPrintOnDemand && article.Stock < itemDto.Quantity)
+                if (cart == null || !cart.Items.Any())
                 {
-                    throw new Exception($"Stock insuficiente para el artículo: {article.Name}");
+                    throw new Exception("El carrito está vacío o no existe.");
                 }
 
-                // Descontar stock físico si hay disponible
-                if (article.Stock >= itemDto.Quantity)
-                {
-                    article.Stock -= itemDto.Quantity;
-                }
-                else if (article.Stock > 0)
-                {
-                    article.Stock = 0; // Se agota el físico, el resto se imprime bajo demanda
-                }
+                var fullAddress = $"{createDto.ShippingAddress}, {createDto.City}, {createDto.Zip}";
 
-                var orderItem = new OrderItem
+                var order = new Order
                 {
-                    ArticleId = article.Id,
-                    Quantity = itemDto.Quantity,
-                    UnitPrice = article.Price // Congelar precio
+                    UserId = isGuest ? null : identifier,
+                    GuestEmail = createDto.GuestEmail,
+                    GuestFirstName = createDto.GuestFirstName,
+                    GuestLastName = createDto.GuestLastName,
+                    ShippingAddress = fullAddress,
+                    ContactPhone = createDto.ContactPhone,
+                    PaymentMethod = createDto.PaymentMethod,
+                    OrderDate = DateTime.UtcNow,
+                    Status = OrderStatus.Pending,
+                    TrackingNumber = Guid.NewGuid()
                 };
 
-                order.OrderItems.Add(orderItem);
-                totalAmount += orderItem.UnitPrice * orderItem.Quantity;
+                decimal totalAmount = 0;
+
+                foreach (var item in cart.Items)
+                {
+                    var article = item.Article;
+
+                    if (!article.IsPrintOnDemand && article.Stock < item.Quantity)
+                    {
+                        throw new Exception($"Stock insuficiente para el artículo: {article.Name}");
+                    }
+
+                    if (article.Stock >= item.Quantity)
+                    {
+                        article.Stock -= item.Quantity;
+                    }
+                    else if (article.Stock > 0)
+                    {
+                        article.Stock = 0;
+                    }
+
+                    var orderItem = new OrderItem
+                    {
+                        ArticleId = article.Id,
+                        Quantity = item.Quantity,
+                        UnitPrice = article.Price 
+                    };
+
+                    order.OrderItems.Add(orderItem);
+                    totalAmount += orderItem.UnitPrice * orderItem.Quantity;
+                }
+
+                order.TotalAmount = totalAmount;
+
+                _context.Orders.Add(order);
+                _context.CartItems.RemoveRange(cart.Items);
+                await _context.SaveChangesAsync();
+                
+                await transaction.CommitAsync();
+
+                return await GetOrderResponseDtoAsync(order.Id);
             }
-
-            order.TotalAmount = totalAmount;
-
-            _context.Orders.Add(order);
-            await _context.SaveChangesAsync();
-
-            return await GetOrderResponseDtoAsync(order.Id);
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         public async Task<OrderResponseDto?> GetOrderByIdAsync(int id, string? userId)
@@ -111,6 +139,17 @@ namespace LegendCraft_Backend.Services
                 .Include(o => o.OrderItems)
                 .ThenInclude(oi => oi.Article)
                 .Where(o => o.UserId == userId)
+                .OrderByDescending(o => o.OrderDate)
+                .ToListAsync();
+
+            return orders.Select(MapToResponseDto).ToList();
+        }
+
+        public async Task<List<OrderResponseDto>> GetAllOrdersAsync()
+        {
+            var orders = await _context.Orders
+                .Include(o => o.OrderItems)
+                .ThenInclude(oi => oi.Article)
                 .OrderByDescending(o => o.OrderDate)
                 .ToListAsync();
 

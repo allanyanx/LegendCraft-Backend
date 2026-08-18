@@ -8,10 +8,12 @@ namespace LegendCraft_Backend.Services
     public class ArticleService : IArticleService
     {
         private readonly ApplicationDbContext _context;
+        private readonly IImageStorageService _imageStorageService;
 
-        public ArticleService(ApplicationDbContext context)
+        public ArticleService(ApplicationDbContext context, IImageStorageService imageStorageService)
         {
             _context = context;
+            _imageStorageService = imageStorageService;
         }
 
         public async Task<int> CreateArticleAsync(ArticleCreateDto dto)
@@ -24,7 +26,12 @@ namespace LegendCraft_Backend.Services
                 Price = dto.Price,
                 Stock = dto.Stock,
                 IsPrintOnDemand = dto.IsPrintOnDemand,
-                PrintTimeDays = dto.PrintTimeDays
+                PrintTimeDays = dto.PrintTimeDays,
+                IsOnSale = dto.IsOnSale,
+                DiscountPercentage = dto.DiscountPercentage,
+                DiscountPrice = dto.IsOnSale && dto.DiscountPercentage.HasValue
+                    ? dto.Price - (dto.Price * (dto.DiscountPercentage.Value / 100))
+                    : null
             };
 
             //Construcción de la lista de Highlights
@@ -66,57 +73,25 @@ namespace LegendCraft_Backend.Services
             if (article == null) throw new Exception("Artículo no encontrado");
 
             var savedUrls = new List<string>();
-            
-            // Usamos el ID del artículo para la carpeta (Ej: article_15) 
-            // Es más seguro que usar el nombre porque evita caracteres inválidos o cambios de nombre.
             var articleFolderName = $"article_{articleId}";
-            var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "Uploads", articleFolderName);
-
-            if (!Directory.Exists(uploadsPath))
-            {
-                Directory.CreateDirectory(uploadsPath);
-            }
 
             foreach (var file in files)
             {
                 if (file.Length > 0)
                 {
-                    // Obtenemos la extensión. Si viene vacía (ej. porque Angular lo mandó como "blob"), la deducimos del Content-Type
-                    var extension = Path.GetExtension(file.FileName);
-                    if (string.IsNullOrEmpty(extension))
+                    var imageUrl = await _imageStorageService.SaveImageAsync(file, articleFolderName);
+                    if (!string.IsNullOrEmpty(imageUrl))
                     {
-                        extension = file.ContentType switch
+                        bool isMainImage = !article.Images.Any();
+
+                        article.Images.Add(new ArticleImage
                         {
-                            "image/webp" => ".webp",
-                            "image/png" => ".png",
-                            "image/jpeg" => ".jpg",
-                            _ => ".webp" // Fallback a webp porque nuestro frontend comprime a webp
-                        };
+                            ImageUrl = imageUrl,
+                            IsMain = isMainImage
+                        });
+
+                        savedUrls.Add(imageUrl);
                     }
-
-                    // Generamos un nombre único para evitar sobreescribir fotos con el mismo nombre
-                    var fileName = $"{Guid.NewGuid()}{extension}";
-                    var filePath = Path.Combine(uploadsPath, fileName);
-
-                    // Guardamos el archivo físicamente en el disco
-                    using (var stream = new FileStream(filePath, FileMode.Create))
-                    {
-                        await file.CopyToAsync(stream);
-                    }
-
-                    // Construimos la URL relativa que se guardará en PostgreSQL
-                    var imageUrl = $"/imagenes/{articleFolderName}/{fileName}";
-
-                    // Si es la primera imagen que subimos, la marcamos como principal
-                    bool isMainImage = !article.Images.Any();
-
-                    article.Images.Add(new ArticleImage
-                    {
-                        ImageUrl = imageUrl,
-                        IsMain = isMainImage
-                    });
-
-                    savedUrls.Add(imageUrl);
                 }
             }
 
@@ -151,7 +126,7 @@ namespace LegendCraft_Backend.Services
             await _context.SaveChangesAsync();
         }
 
-        public async Task<PagedResultDto<ArticleListResponseDto>> GetAllArticlesAsync(int pageNumber, int pageSize, string? search, List<int>? attributeValues = null, decimal? maxPrice = null, string? sortBy = null)
+        public async Task<PagedResultDto<ArticleListResponseDto>> GetAllArticlesAsync(int pageNumber, int pageSize, string? search, List<int>? attributeValues = null, decimal? maxPrice = null, string? sortBy = null, bool? isPrintOnDemand = null, bool? isOnSale = null)
         {
             // 1. Iniciamos la consulta base, pero NO la ejecutamos todavía
             var query = _context.Articles.AsQueryable();
@@ -183,6 +158,18 @@ namespace LegendCraft_Backend.Services
                 query = query.Where(a => a.Price <= maxPrice.Value);
             }
 
+            // Filtrado por IsPrintOnDemand
+            if (isPrintOnDemand.HasValue)
+            {
+                query = query.Where(a => a.IsPrintOnDemand == isPrintOnDemand.Value);
+            }
+
+            // Filtrado por Oferta
+            if (isOnSale.HasValue)
+            {
+                query = query.Where(a => a.IsOnSale == isOnSale.Value);
+            }
+
             // 3. Contamos el total de registros que coinciden con el filtro (vital para la paginación)
             var totalRecords = await query.CountAsync();
 
@@ -195,7 +182,8 @@ namespace LegendCraft_Backend.Services
                 "precio_desc" => query.OrderByDescending(a => a.Price),
                 "nombre_asc" => query.OrderBy(a => a.Name),
                 "nombre_desc" => query.OrderByDescending(a => a.Name),
-                _ => query.OrderByDescending(a => a.Id) // relevantes o default
+                "relevantes" => query.OrderByDescending(a => a.SalesCount),
+                _ => query.OrderByDescending(a => a.SalesCount) // relevantes o default
             };
 
             // Paginación y selección de datos
@@ -212,6 +200,9 @@ namespace LegendCraft_Backend.Services
                     Stock = a.Stock,
                     IsPrintOnDemand = a.IsPrintOnDemand,
                     PrintTimeDays = a.PrintTimeDays,
+                    IsOnSale = a.IsOnSale,
+                    DiscountPrice = a.DiscountPrice,
+                    DiscountPercentage = a.DiscountPercentage,
                     MainImageUrl = a.Images.FirstOrDefault(i => i.IsMain) != null
                                    ? a.Images.FirstOrDefault(i => i.IsMain)!.ImageUrl
                                    : ""
@@ -249,6 +240,9 @@ namespace LegendCraft_Backend.Services
                 Stock = article.Stock,
                 IsPrintOnDemand = article.IsPrintOnDemand,
                 PrintTimeDays = article.PrintTimeDays,
+                IsOnSale = article.IsOnSale,
+                DiscountPrice = article.DiscountPrice,
+                DiscountPercentage = article.DiscountPercentage,
                 // Aplanamos las viñetas, ordenadas por el DisplayOrder
                 Highlights = article.Highlights.OrderBy(h => h.DisplayOrder).Select(h => h.Text).ToList(),
                 // Aplanamos las imágenes
@@ -283,6 +277,11 @@ namespace LegendCraft_Backend.Services
             article.Stock = dto.Stock;
             article.IsPrintOnDemand = dto.IsPrintOnDemand;
             article.PrintTimeDays = dto.PrintTimeDays;
+            article.IsOnSale = dto.IsOnSale;
+            article.DiscountPercentage = dto.DiscountPercentage;
+            article.DiscountPrice = dto.IsOnSale && dto.DiscountPercentage.HasValue
+                    ? dto.Price - (dto.Price * (dto.DiscountPercentage.Value / 100))
+                    : null;
             article.UpdatedAt = DateTime.UtcNow; // Campo de auditoría
 
             // Actualizamos las viñetas (la forma más limpia es borrar las viejas y poner las nuevas)
@@ -334,16 +333,8 @@ namespace LegendCraft_Backend.Services
 
             if (image == null) throw new Exception("Imagen no encontrada");
 
-            // Extraemos la ruta relativa desde la URL guardada (Ej: /imagenes/article_1/foto.jpg -> article_1/foto.jpg)
-            var relativePath = image.ImageUrl.Replace("/imagenes/", "").Replace("/", Path.DirectorySeparatorChar.ToString());
-            
-            var uploadsPath = Path.Combine(Directory.GetCurrentDirectory(), "Uploads");
-            var physicalPath = Path.Combine(uploadsPath, relativePath);
-
-            if (File.Exists(physicalPath))
-            {
-                File.Delete(physicalPath);
-            }
+            // Delegamos la eliminación física del archivo al servicio de almacenamiento
+            await _imageStorageService.DeleteImageAsync(image.ImageUrl);
 
             // Borramos el registro de la base de datos
             _context.ArticleImages.Remove(image);

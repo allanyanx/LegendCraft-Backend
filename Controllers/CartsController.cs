@@ -8,7 +8,6 @@ namespace LegendCraft_Backend.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // Protegemos el carrito, requiere usuario logueado
     public class CartsController : ControllerBase
     {
         private readonly ICartService _cartService;
@@ -18,31 +17,35 @@ namespace LegendCraft_Backend.Controllers
             _cartService = cartService;
         }
 
-        private string GetUserId()
+        private (string Id, bool IsGuest) GetIdentifier()
         {
-            // Extraer el UserId del token JWT
-            return User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!string.IsNullOrEmpty(userId)) return (userId, false);
+
+            if (Request.Headers.TryGetValue("X-Guest-Id", out var guestId)) return (guestId.ToString(), true);
+
+            return (string.Empty, false);
         }
 
         [HttpGet]
         public async Task<IActionResult> GetMyCart()
         {
-            var userId = GetUserId();
-            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            var (id, isGuest) = GetIdentifier();
+            if (string.IsNullOrEmpty(id)) return BadRequest(new { Message = "No se proporcionó un identificador de usuario o invitado válido." });
 
-            var cart = await _cartService.GetCartAsync(userId);
+            var cart = await _cartService.GetCartAsync(id, isGuest);
             return Ok(cart);
         }
 
         [HttpPost("items")]
         public async Task<IActionResult> AddItemToCart([FromBody] AddToCartDto dto)
         {
-            var userId = GetUserId();
-            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            var (id, isGuest) = GetIdentifier();
+            if (string.IsNullOrEmpty(id)) return BadRequest(new { Message = "No se proporcionó un identificador de usuario o invitado válido." });
 
             try
             {
-                var cart = await _cartService.AddItemToCartAsync(userId, dto);
+                var cart = await _cartService.AddItemToCartAsync(id, dto, isGuest);
                 return Ok(cart);
             }
             catch (Exception ex)
@@ -54,12 +57,12 @@ namespace LegendCraft_Backend.Controllers
         [HttpPut("items/{itemId}")]
         public async Task<IActionResult> UpdateItemQuantity(int itemId, [FromBody] UpdateCartItemDto dto)
         {
-            var userId = GetUserId();
-            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            var (id, isGuest) = GetIdentifier();
+            if (string.IsNullOrEmpty(id)) return BadRequest(new { Message = "No se proporcionó un identificador de usuario o invitado válido." });
 
             try
             {
-                var cart = await _cartService.UpdateItemQuantityAsync(userId, itemId, dto);
+                var cart = await _cartService.UpdateItemQuantityAsync(id, itemId, dto, isGuest);
                 return Ok(cart);
             }
             catch (Exception ex)
@@ -71,12 +74,12 @@ namespace LegendCraft_Backend.Controllers
         [HttpDelete("items/{itemId}")]
         public async Task<IActionResult> RemoveItem(int itemId)
         {
-            var userId = GetUserId();
-            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            var (id, isGuest) = GetIdentifier();
+            if (string.IsNullOrEmpty(id)) return BadRequest(new { Message = "No se proporcionó un identificador de usuario o invitado válido." });
 
             try
             {
-                var cart = await _cartService.RemoveItemFromCartAsync(userId, itemId);
+                var cart = await _cartService.RemoveItemFromCartAsync(id, itemId, isGuest);
                 return Ok(cart);
             }
             catch (Exception ex)
@@ -88,10 +91,10 @@ namespace LegendCraft_Backend.Controllers
         [HttpDelete]
         public async Task<IActionResult> ClearCart()
         {
-            var userId = GetUserId();
-            if (string.IsNullOrEmpty(userId)) return Unauthorized();
+            var (id, isGuest) = GetIdentifier();
+            if (string.IsNullOrEmpty(id)) return BadRequest(new { Message = "No se proporcionó un identificador de usuario o invitado válido." });
 
-            await _cartService.ClearCartAsync(userId);
+            await _cartService.ClearCartAsync(id, isGuest);
             return Ok(new { Message = "Carrito limpiado correctamente" });
         }
     }

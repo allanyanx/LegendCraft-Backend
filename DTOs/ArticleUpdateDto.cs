@@ -9,6 +9,8 @@ namespace LegendCraft_Backend.DTOs
         public bool IsPrintOnDemand { get; set; }
         public bool RequiresQuote { get; set; }
         public int PrintTimeDays { get; set; }
+        public bool IsOnSale { get; set; }
+        public decimal? DiscountPercentage { get; set; }
 
         public List<string> Highlights { get; set; } = new();
         public List<int> AttributeValueIds { get; set; } = new();

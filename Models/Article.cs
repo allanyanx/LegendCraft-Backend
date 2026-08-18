@@ -12,6 +12,12 @@ namespace LegendCraft_Backend.Models
         public bool RequiresQuote { get; set; } = false;
         public int PrintTimeDays { get; set; } = 3;
 
+        // Ofertas y Relevancia
+        public bool IsOnSale { get; set; } = false;
+        public decimal? DiscountPrice { get; set; }
+        public decimal? DiscountPercentage { get; set; }
+        public int SalesCount { get; set; } = 0;
+
         // Relaciones
         public ICollection<ArticleImage> Images { get; set; } = new List<ArticleImage>();
         public ICollection<ArticleAttributeValue> ArticleAttributes { get; set; } = new List<ArticleAttributeValue>();
