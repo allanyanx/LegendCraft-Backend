@@ -1,6 +1,6 @@
 param (
     [string]$FirstName = "Josue",
-    [string]$Password = "0806",
+    [string]$Password = "JosuePassword123!",
     [string]$Email = "josue@legendcraft.com"
 )
 

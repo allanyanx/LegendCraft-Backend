@@ -57,14 +57,25 @@ builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<ICartService, CartService>();
 
-// CORS para permitir peticiones del frontend (ej. React, Angular, Vue)
+// CORS configurable para producción
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
+    options.AddPolicy("ConfiguredCors", policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>();
+        if (allowedOrigins != null && allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
+        }
+        else
+        {
+            // Fallback para desarrollo local
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
+        }
     });
 });
 
@@ -84,7 +95,7 @@ if (app.Environment.IsDevelopment())
 //app.UseHttpsRedirection();
 
 // APLICAR POLÍTICA CORS (Antes de Autenticación)
-app.UseCors("AllowAll");
+app.UseCors("ConfiguredCors");
 
 // ACTIVAR LA AUTENTICACIÓN
 // Es vital que UseAuthentication esté ANTES de UseAuthorization
