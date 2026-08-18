@@ -17,24 +17,31 @@ namespace LegendCraft_Backend.Controllers
             _orderService = orderService;
         }
 
+        private (string Id, bool IsGuest) GetIdentifier()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!string.IsNullOrEmpty(userId)) return (userId, false);
+            if (Request.Headers.TryGetValue("X-Guest-Id", out var guestId)) return (guestId.ToString(), true);
+            return (string.Empty, false);
+        }
+
         [HttpPost]
         [AllowAnonymous]
         public async Task<IActionResult> CreateOrder([FromBody] OrderCreateDto createDto)
         {
             try
             {
-                string? userId = null;
-                if (User.Identity?.IsAuthenticated == true)
+                var (id, isGuest) = GetIdentifier();
+                if (string.IsNullOrEmpty(id)) return BadRequest(new { message = "Identificador no válido." });
+
+                if (!isGuest)
                 {
-                    userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                    
-                    // Autorellenar datos del usuario si no vienen en el DTO
                     createDto.GuestEmail ??= User.FindFirstValue(ClaimTypes.Email);
                     createDto.GuestFirstName ??= User.FindFirstValue(ClaimTypes.GivenName);
                     createDto.GuestLastName ??= User.FindFirstValue(ClaimTypes.Surname);
                 }
 
-                var result = await _orderService.CreateOrderAsync(createDto, userId);
+                var result = await _orderService.CreateOrderAsync(createDto, id, isGuest);
                 return CreatedAtAction(nameof(GetOrderById), new { id = result.Id }, result);
             }
             catch (Exception ex)
@@ -84,6 +91,27 @@ namespace LegendCraft_Backend.Controllers
 
             var orders = await _orderService.GetUserOrdersAsync(userId);
             return Ok(orders);
+        }
+
+        [HttpGet("all")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAllOrders()
+        {
+            var orders = await _orderService.GetAllOrdersAsync();
+            return Ok(orders);
+        }
+
+        [HttpPut("{id}/status")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> UpdateOrderStatus(int id, [FromBody] LegendCraft_Backend.Models.OrderStatus status)
+        {
+            var result = await _orderService.UpdateOrderStatusAsync(id, status);
+            if (!result)
+            {
+                return NotFound(new { message = "Orden no encontrada." });
+            }
+
+            return Ok(new { message = "Estado actualizado con éxito." });
         }
     }
 }

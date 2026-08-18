@@ -22,6 +22,8 @@ namespace LegendCraft_Backend.Data
         public DbSet<OrderItem> OrderItems { get; set; }
         public DbSet<Cart> Carts { get; set; }
         public DbSet<CartItem> CartItems { get; set; }
+        public DbSet<Banner> Banners { get; set; }
+        public DbSet<Faq> Faqs { get; set; }
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
@@ -44,6 +46,8 @@ namespace LegendCraft_Backend.Data
             builder.Entity<OrderItem>().HasQueryFilter(a => a.IsActive);
             builder.Entity<Cart>().HasQueryFilter(a => a.IsActive);
             builder.Entity<CartItem>().HasQueryFilter(a => a.IsActive);
+            builder.Entity<Banner>().HasQueryFilter(a => a.IsActive);
+            builder.Entity<Faq>().HasQueryFilter(a => a.IsActive);
         }
     }
 }

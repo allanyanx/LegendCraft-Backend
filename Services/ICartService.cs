@@ -5,10 +5,10 @@ namespace LegendCraft_Backend.Services
 {
     public interface ICartService
     {
-        Task<CartDto> GetCartAsync(string userId);
-        Task<CartDto> AddItemToCartAsync(string userId, AddToCartDto dto);
-        Task<CartDto> UpdateItemQuantityAsync(string userId, int cartItemId, UpdateCartItemDto dto);
-        Task<CartDto> RemoveItemFromCartAsync(string userId, int cartItemId);
-        Task ClearCartAsync(string userId);
+        Task<CartDto> GetCartAsync(string identifier, bool isGuest = false);
+        Task<CartDto> AddItemToCartAsync(string identifier, AddToCartDto dto, bool isGuest = false);
+        Task<CartDto> UpdateItemQuantityAsync(string identifier, int cartItemId, UpdateCartItemDto dto, bool isGuest = false);
+        Task<CartDto> RemoveItemFromCartAsync(string identifier, int cartItemId, bool isGuest = false);
+        Task ClearCartAsync(string identifier, bool isGuest = false);
     }
 }

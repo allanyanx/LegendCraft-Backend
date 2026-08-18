@@ -65,19 +65,20 @@ namespace LegendCraft_Backend.Controllers
         }
 
         [HttpGet]
-        [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
         public async Task<IActionResult> GetAllArticles(
         [FromQuery] int pageNumber = 1,
         [FromQuery] int pageSize = 10,
         [FromQuery] string? search = null,
         [FromQuery] List<int>? attributeValues = null,
         [FromQuery] decimal? maxPrice = null,
-        [FromQuery] string? sortBy = "relevantes")
+        [FromQuery] string? sortBy = "relevantes",
+        [FromQuery] bool? isPrintOnDemand = null,
+        [FromQuery] bool? isOnSale = null)
         {
             if (pageNumber <= 0) pageNumber = 1;
             if (pageSize <= 0 || pageSize > 50) pageSize = 10;
 
-            var result = await _articleService.GetAllArticlesAsync(pageNumber, pageSize, search, attributeValues, maxPrice, sortBy);
+            var result = await _articleService.GetAllArticlesAsync(pageNumber, pageSize, search, attributeValues, maxPrice, sortBy, isPrintOnDemand, isOnSale);
             return Ok(result);
         }
 

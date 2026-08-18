@@ -51,11 +51,14 @@ builder.Services.AddAuthentication(options =>
 });
 
 // Inyección de dependencias de tus servicios
+builder.Services.AddScoped<IImageStorageService, LocalImageStorageService>();
 builder.Services.AddScoped<IArticleService, ArticleService>();
 builder.Services.AddScoped<IAttributeService, AttributeService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<ICartService, CartService>();
+builder.Services.AddScoped<IBannerService, BannerService>();
+builder.Services.AddScoped<IFaqService, FaqService>();
 
 // CORS configurable para producción
 builder.Services.AddCors(options =>

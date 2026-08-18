@@ -14,18 +14,39 @@ namespace LegendCraft_Backend.Services
             _context = context;
         }
 
-        private async Task<Cart> GetOrCreateCartEntityAsync(string userId)
+        private async Task<Cart> GetOrCreateCartEntityAsync(string identifier, bool isGuest)
         {
-            var cart = await _context.Carts
-                .Include(c => c.Items)
-                .ThenInclude(i => i.Article)
-                .FirstOrDefaultAsync(c => c.UserId == userId && c.IsActive);
+            Cart? cart = null;
 
-            if (cart == null)
+            if (isGuest)
             {
-                cart = new Cart { UserId = userId };
-                _context.Carts.Add(cart);
-                await _context.SaveChangesAsync();
+                cart = await _context.Carts
+                    .Include(c => c.Items)
+                    .ThenInclude(i => i.Article)
+                    .ThenInclude(a => a.Images)
+                    .FirstOrDefaultAsync(c => c.GuestId == identifier && c.IsActive);
+
+                if (cart == null)
+                {
+                    cart = new Cart { GuestId = identifier };
+                    _context.Carts.Add(cart);
+                    await _context.SaveChangesAsync();
+                }
+            }
+            else
+            {
+                cart = await _context.Carts
+                    .Include(c => c.Items)
+                    .ThenInclude(i => i.Article)
+                    .ThenInclude(a => a.Images)
+                    .FirstOrDefaultAsync(c => c.UserId == identifier && c.IsActive);
+
+                if (cart == null)
+                {
+                    cart = new Cart { UserId = identifier };
+                    _context.Carts.Add(cart);
+                    await _context.SaveChangesAsync();
+                }
             }
 
             return cart;
@@ -43,21 +64,22 @@ namespace LegendCraft_Backend.Services
                     ArticleId = i.ArticleId,
                     ArticleName = i.Article?.Name ?? "Desconocido",
                     Price = i.Article?.Price ?? 0m,
-                    Quantity = i.Quantity
+                    Quantity = i.Quantity,
+                    ImageUrl = i.Article?.Images?.FirstOrDefault(img => img.IsMain)?.ImageUrl ?? i.Article?.Images?.FirstOrDefault()?.ImageUrl ?? ""
                 }).ToList(),
                 TotalPrice = cart.Items.Where(i => i.IsActive).Sum(i => (i.Article?.Price ?? 0m) * i.Quantity)
             };
         }
 
-        public async Task<CartDto> GetCartAsync(string userId)
+        public async Task<CartDto> GetCartAsync(string identifier, bool isGuest = false)
         {
-            var cart = await GetOrCreateCartEntityAsync(userId);
+            var cart = await GetOrCreateCartEntityAsync(identifier, isGuest);
             return MapToDto(cart);
         }
 
-        public async Task<CartDto> AddItemToCartAsync(string userId, AddToCartDto dto)
+        public async Task<CartDto> AddItemToCartAsync(string identifier, AddToCartDto dto, bool isGuest = false)
         {
-            var cart = await GetOrCreateCartEntityAsync(userId);
+            var cart = await GetOrCreateCartEntityAsync(identifier, isGuest);
             var article = await _context.Articles.FindAsync(dto.ArticleId);
 
             if (article == null || !article.IsActive)
@@ -84,9 +106,9 @@ namespace LegendCraft_Backend.Services
             return MapToDto(cart);
         }
 
-        public async Task<CartDto> UpdateItemQuantityAsync(string userId, int cartItemId, UpdateCartItemDto dto)
+        public async Task<CartDto> UpdateItemQuantityAsync(string identifier, int cartItemId, UpdateCartItemDto dto, bool isGuest = false)
         {
-            var cart = await GetOrCreateCartEntityAsync(userId);
+            var cart = await GetOrCreateCartEntityAsync(identifier, isGuest);
             var item = cart.Items.FirstOrDefault(i => i.Id == cartItemId && i.IsActive);
 
             if (item == null)
@@ -94,7 +116,7 @@ namespace LegendCraft_Backend.Services
 
             if (dto.Quantity <= 0)
             {
-                item.IsActive = false;
+                _context.CartItems.Remove(item);
             }
             else
             {
@@ -106,20 +128,19 @@ namespace LegendCraft_Backend.Services
             return MapToDto(cart);
         }
 
-        public async Task<CartDto> RemoveItemFromCartAsync(string userId, int cartItemId)
+        public async Task<CartDto> RemoveItemFromCartAsync(string identifier, int cartItemId, bool isGuest = false)
         {
-            return await UpdateItemQuantityAsync(userId, cartItemId, new UpdateCartItemDto { Quantity = 0 });
+            return await UpdateItemQuantityAsync(identifier, cartItemId, new UpdateCartItemDto { Quantity = 0 }, isGuest);
         }
 
-        public async Task ClearCartAsync(string userId)
+        public async Task ClearCartAsync(string identifier, bool isGuest = false)
         {
-            var cart = await GetOrCreateCartEntityAsync(userId);
-            foreach (var item in cart.Items)
+            var cart = await GetOrCreateCartEntityAsync(identifier, isGuest);
+            if (cart.Items.Any())
             {
-                item.IsActive = false;
-                item.UpdatedAt = DateTime.UtcNow;
+                _context.CartItems.RemoveRange(cart.Items);
+                await _context.SaveChangesAsync();
             }
-            await _context.SaveChangesAsync();
         }
     }
 }
